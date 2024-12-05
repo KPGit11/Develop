@@ -18,7 +18,7 @@ class WeatherService {
 
   constructor() {
     this.baseURL = process.env.API_BASE_URL || 'https://api.openweathermap.org/data/2.5';
-    this.apiKey = process.env.API_KEY || '';
+    this.apiKey = process.env.API_KEY || '134dfe02c5ccec64a346eebe85ac7b40';
   }
 
   private buildGeocodeQuery(city: string): string {
@@ -28,7 +28,6 @@ class WeatherService {
   private buildWeatherQuery(coordinates: Coordinates): string {
     return `${this.baseURL}/forecast?lat=${coordinates.lat}&lon=${coordinates.lon}&units=imperial&appid=${this.apiKey}`;
   }
-
   private async fetchLocationData(city: string): Promise<Coordinates> {
     const response = await fetch(this.buildGeocodeQuery(city));
     const data = await response.json();
@@ -41,15 +40,21 @@ class WeatherService {
     const response = await fetch(this.buildWeatherQuery(coordinates));
     const data = await response.json();
     
-    // Process and return weather data
+    // Extract the list from the response
     const weatherList = data.list;
-    return weatherList.map((item: any) => ({
+    
+    // Get one entry per day (every 8th item since data is in 3-hour intervals)
+    const dailyForecasts = weatherList.filter((_: any, i: number) => i % 8 === 0).slice(0, 6);
+    
+    // Map the data to our Weather interface format
+    return dailyForecasts.map((item: any) => ({
       date: new Date(item.dt * 1000).toLocaleDateString(),
-      temp: item.main.temp,
+      temp: Math.round(item.main.temp),
       humidity: item.main.humidity,
-      windSpeed: item.wind.speed,
+      windSpeed: Math.round(item.wind.speed),
       description: item.weather[0].description,
-      icon: `https://openweathermap.org/img/w/${item.weather[0].icon}.png`
+      icon: `https://openweathermap.org/img/w/${item.weather[0].icon}.png`,
+      cityName: city
     }));
   }
 }
